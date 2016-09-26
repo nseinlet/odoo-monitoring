@@ -1,0 +1,25 @@
+#!/bin/sh
+#%# family=manual
+#%# capabilities=autoconf suggest
+case $1 in
+    autoconf)
+        exit 0
+        ;;
+    suggest)
+        exit 0
+        ;;
+    config)
+        echo graph_category odoo
+        echo graph_title odoo rpc request count
+        echo graph_vlabel num requests/minute in last 5 minutes
+        echo requests.label num requests
+        echo pollrequests.label num poll requests
+        exit 0
+        ;;
+esac
+# watch out for the time zone of the logs => using date -u for UTC timestamps
+result=$(tail -60000 /var/log/odoo/odoo.log | grep -a "odoo.http.rpc.request" | grep -a -v "poll" | awk "BEGIN{count=0} (\$1 \" \" \$2) >= \"`date +'%F %H:%M:%S' -ud '5 min ago'`\" { count+=1; } END{print count/5}")
+pollresult=$(tail -60000 /var/log/odoo/odoo.log | grep -a "odoo.http.rpc.request" | grep -a "poll" | awk "BEGIN{count=0} (\$1 \" \" \$2) >= \"`date +'%F %H:%M:%S' -ud '5 min ago'`\" { count+=1; } END{print count/5}")
+echo "requests.value ${result}"
+echo "pollrequests.value ${pollresult}"
+exit 0

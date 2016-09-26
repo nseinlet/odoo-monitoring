@@ -1,0 +1,25 @@
+#!/bin/sh
+#%# family=manual
+#%# capabilities=autoconf suggest
+case $1 in
+  config)
+      echo graph_category odoo
+      echo graph_title odoo rpc requests min/average response time
+      echo graph_vlabel seconds
+      echo graph_args --units-exponent -3
+      echo min.label min
+      echo min.warning 1
+      echo min.critical 5
+      echo avg.label average
+      echo avg.warning 1
+      echo avg.critical 5
+      exit 0
+      ;;
+esac
+# watch out for the time zone of the logs => using date -u for UTC timestamps
+result=$(tail -60000 /var/log/odoo/odoo.log | grep -a "odoo.http.rpc.request" | grep -a -v "poll" | awk "BEGIN{sum=0;count=0} (\$1 \" \" \$2) >= \"`date +'%F %H:%M:%S' -ud '5 min ago'`\" {split(\$8,t,\":\");time=0+t[2];if (min==\"\") { min=time}; sum += time; count+=1; min=(time>min)?min:time } END{print min, sum/count}")
+echo -n "min.value "
+echo ${result} | cut -d" " -f1
+echo -n "avg.value "
+echo ${result} | cut -d" " -f2
+exit 0

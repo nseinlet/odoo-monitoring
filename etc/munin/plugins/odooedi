@@ -1,0 +1,26 @@
+#!/bin/sh
+#%# family=manual
+#%# capabilities=autoconf suggest
+case $1 in
+  config)
+      echo graph_category odoo
+      echo graph_title odoo edi exchange
+      echo graph_vlabel # docs
+      echo graph_args --units-exponent 0
+      echo late.label late invoices
+      echo late.warning 1
+      echo late.critical 3
+      exit 0
+      ;;
+esac
+
+echo -n "late.value "
+psql -A -t -d odoo1 -c "
+  select count(*) from account_invoice
+  inner join res_partner on account_invoice.partner_id=res_partner.id 
+  where state in ('open','paid')
+  and account_invoice.type in ('out_invoice', 'out_refund') 
+  and date_INVOICE<=current_date - 1
+  and date_sent IS NULL 
+  and res_partner.use_edi=true;"
+exit 0
