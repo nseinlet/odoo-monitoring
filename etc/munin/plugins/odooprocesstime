@@ -1,0 +1,40 @@
+#!/bin/sh
+#%# family=manual
+#%# capabilities=autoconf suggest
+MODULES="stock account hr mail mrp sale purchase"
+
+case $1 in
+    autoconf)
+        exit 0
+        ;;
+    suggest)
+        exit 0
+        ;;
+    config)
+        echo graph_category odoo
+        echo graph_title odoo rpc process time/min
+        echo graph_vlabel avg process time/min in last 5 minutes
+        MODE="AREA"
+        for MOD in $MODULES
+        do
+            echo -n $MOD 
+            echo cpu.label $MOD process time
+            echo -n $MOD 
+            echo cpu.type GAUGE
+            echo -n $MOD 
+            echo cpu.draw $MODE
+            MODE="STACK"
+            echo -n $MOD 
+            echo cpu.min 0
+        done
+        exit 0
+        ;;
+esac
+for MOD in $MODULES
+do
+    result=$(tail -60000 /var/log/odoo/odoo.log | grep -a "odoo.http.rpc.request" | grep -a -v "poll" | awk -v module=$MOD "BEGIN{sum=0;count=0} (\$1 \" \" \$2) >= \"`date +'%F %H:%M:%S' -ud '5 min ago'`\" {split(\$8,t,\":\"); split(t[1],m,\".\"); if(m[1]==module){split(\$10,tm,\":\");time = 0+tm[2];sum += time; count+=1;};}END{print sum/5; print count/5}")
+    echo -n $MOD
+    echo -n "cpu.value "
+    echo ${result} | cut -d" " -f1
+done
+exit 0
