@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#%# family=manual
+
+TEMP_FILE='/tmp/xlog_location_munin'
+case $1 in
+    config)
+        echo graph_category postgres
+        echo graph_title Xlog Size
+        echo xlog_size.label Size
+        exit 0
+        ;;
+esac
+
+pg_ver=`psql postgres -A -t -c "show server_version_num;"`
+if (( $pg_ver < 100000 )); then
+    new_loc=`psql postgres -A -t -c "select pg_current_xlog_insert_location();"`
+else
+    new_loc=`psql postgres -A -t -c "select pg_current_wal_insert_lsn();"`
+fi
+echo -n "xlog_size.value "
+
+if [ -f $FILE ]; then
+    old_loc=`cat $TEMP_FILE`
+    if (( $pg_ver < 100000 )); then
+        psql postgres -A -t -c "SELECT pg_xlog_location_diff('$new_loc', '$old_loc');"
+    else
+        psql postgres -A -t -c "SELECT pg_wal_lsn_diff('$new_loc', '$old_loc');"
+    fi
+else
+    echo "0"
+fi
+echo "$new_loc" > $TEMP_FILE
+
+exit 0
